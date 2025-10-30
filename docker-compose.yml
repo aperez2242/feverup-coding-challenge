@@ -1,0 +1,65 @@
+services:
+  wordpress:
+    build: .
+    container_name: wordpress-dev
+    ports:
+      - "8080:80"
+    environment:
+      WORDPRESS_DB_HOST: db
+      WORDPRESS_DB_USER: wp_user
+      WORDPRESS_DB_PASSWORD: wp_pass
+      WORDPRESS_DB_NAME: wp_db
+    volumes:
+      - wordpress_data:/var/www/html
+      - ./wp-content/themes/understrap-child:/var/www/html/wp-content/themes/understrap-child
+      - ./wp-content/plugins/pokemon-cpt:/var/www/html/wp-content/plugins/pokemon-cpt
+      - ./custom-php.ini:/usr/local/etc/php/conf.d/custom.ini
+    depends_on:
+      - db
+
+  db:
+    image: mariadb:10.6
+    container_name: wordpress-db
+    restart: always
+    environment:
+      MYSQL_DATABASE: wp_db
+      MYSQL_USER: wp_user
+      MYSQL_PASSWORD: wp_pass
+      MYSQL_ROOT_PASSWORD: root
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./data/db_data.sql:/docker-entrypoint-initdb.d/db_data.sql
+      - ./sql:/docker-entrypoint-initdb.d
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: wp-phpmyadmin
+    environment:
+      PMA_HOST: db
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "8081:80"
+    depends_on:
+      - db
+
+  test:
+    build: .
+    container_name: wordpress-tests
+    command: [ "bash", "-c", "phpunit --configuration phpunit.xml" ]
+    depends_on:
+      - db
+    environment:
+      WORDPRESS_DB_HOST: db
+      WORDPRESS_DB_USER: wp_user
+      WORDPRESS_DB_PASSWORD: wp_pass
+      WORDPRESS_DB_NAME: wp_db
+    volumes:
+      - ./wp-content:/var/www/html/wp-content
+      - ./phpunit.xml:/var/www/html/phpunit.xml
+      - ./tests:/var/www/html/tests
+      - ./wp-tests-config.php:/tmp/wordpress-tests-lib/wp-tests-config.php
+
+
+volumes:
+  db_data:
+  wordpress_data:
